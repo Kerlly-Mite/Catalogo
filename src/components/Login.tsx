@@ -1,25 +1,39 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { loginRequest } from '../services/api';
 
 const Login = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false); // para deshabilitar el botón mientras responde la API
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  // Ahora la función es async porque espera la respuesta del backend.
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
 
-    // Simulación de validación hardcodeada (a futuro se reemplazará por llamada a API)
-    if (email === 'admin@upse.edu.ec' && password === '123456') {
-      setError('');
-      login(email); // Cambiamos el estado global a autenticado
-      navigate('/'); // Redirigimos al Dashboard
-    } else {
-      setError('Credenciales incorrectas. Usa admin@upse.edu.ec / 123456');
+    try {
+      // Llamamos al endpoint POST /api/login del backend en Go.
+      const data = await loginRequest(email, password);
+
+      // Si llegó aquí, las credenciales fueron válidas: guardamos email y token.
+      login(data.email, data.token);
+      navigate('/');
+    } catch (err) {
+      // Mostramos el mensaje que devolvió la API o uno de conexión.
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error de conexión con el servidor'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,9 +74,10 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Iniciar Sesión
+            {loading ? 'Verificando...' : 'Iniciar Sesión'}
           </button>
         </form>
       </div>

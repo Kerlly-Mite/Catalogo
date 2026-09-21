@@ -1,14 +1,50 @@
+import { useEffect, useState } from 'react';
 import { useCart, type Producto } from '../context/CartContext';
-
-const productos: Producto[] = [
-  { id: 1, nombre: 'Serum Revitalizante', precio: 45.0, img: 'https://picsum.photos/seed/serum/150' },
-  { id: 2, nombre: 'Crema Hidratante Pro', precio: 32.5, img: 'https://picsum.photos/seed/crema/150' },
-  { id: 3, nombre: 'Tónico Purificante', precio: 28.0, img: 'https://picsum.photos/seed/tonico/150' },
-  { id: 4, nombre: 'Mascarilla Nocturna', precio: 50.0, img: 'https://picsum.photos/seed/mascarilla/150' },
-];
+import { getProductos } from '../services/api';
 
 const Catalogo = () => {
   const { addToCart } = useCart();
+
+  // Ya NO hay arreglo quemado: los productos vienen de la API.
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+
+  // useEffect con arreglo de dependencias vacío: se ejecuta una sola vez al montar el componente.
+  useEffect(() => {
+    const cargarProductos = async () => {
+      try {
+        const data = await getProductos(); // GET /api/productos
+        setProductos(data);
+      } catch {
+        setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo en el puerto 3000.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarProductos();
+  }, []);
+
+  // Estado de carga
+  if (loading) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-6">Catálogo de Productos</h1>
+        <p className="text-slate-500">Cargando productos...</p>
+      </div>
+    );
+  }
+
+  // Estado de error
+  if (error) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-6">Catálogo de Productos</h1>
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div>

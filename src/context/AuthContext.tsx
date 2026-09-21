@@ -3,8 +3,9 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  userEmail: string | null; // <-- estado para el correo
-  login: (email: string) => void; // <-- la función recibe el correo
+  userEmail: string | null;
+  token: string | null; // <-- token que nos devuelve la API
+  login: (email: string, token: string) => void; // <-- ahora recibe también el token
   logout: () => void;
 }
 
@@ -23,21 +24,36 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null); // <-- Estado local
+  // Inicializamos leyendo localStorage para que la sesión no se pierda al refrescar (F5).
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem('token')
+  );
+  const [userEmail, setUserEmail] = useState<string | null>(() =>
+    localStorage.getItem('userEmail')
+  );
 
-  const login = (email: string) => {
-    setIsAuthenticated(true);
-    setUserEmail(email); // Guardamos el correo
+  // Estamos autenticados solo si existe un token.
+  const isAuthenticated = token !== null;
+
+  const login = (email: string, newToken: string) => {
+    setToken(newToken);
+    setUserEmail(email);
+    // Persistimos la sesión en el navegador.
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('userEmail', email);
   };
 
   const logout = () => {
-    setIsAuthenticated(false);
-    setUserEmail(null); // Limpiamos el correo al salir
+    setToken(null);
+    setUserEmail(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userEmail, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, userEmail, token, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

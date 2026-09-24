@@ -2,7 +2,14 @@
 // Capa de servicios: centraliza TODA la comunicación con la API RESTful (backend en Go).
 // Así los componentes no saben de URLs ni de fetch, solo llaman funciones.
 
-import type { Producto } from '../context/CartContext';
+// Producto tal como lo devuelve hoy el backend (GET /api/productos): solo campos básicos.
+// (El tipo enriquecido con descripción, categoría y galería vive en src/data/productos.ts)
+export interface ProductoApi {
+  id: number;
+  nombre: string;
+  precio: number;
+  img: string;
+}
 
 // Leemos la URL base desde las variables de entorno de Vite (archivo .env).
 // Si no existe, usamos localhost:3000 como valor por defecto.
@@ -12,11 +19,12 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 export interface LoginResponse {
   token: string;
   email: string;
+  rol: string; // 'admin' | 'cliente' (Tema 5): lo normaliza el componente Login
 }
 
 /**
  * Envía las credenciales al backend (POST /api/login).
- * Devuelve el token y el email si son correctas; lanza un Error si no.
+ * Devuelve el token, el email y el rol si son correctas; lanza un Error si no.
  */
 export const loginRequest = async (
   email: string,
@@ -43,7 +51,7 @@ export const loginRequest = async (
 /**
  * Obtiene el catálogo de productos desde el backend (GET /api/productos).
  */
-export const getProductos = async (): Promise<Producto[]> => {
+export const getProductos = async (): Promise<ProductoApi[]> => {
   const response = await fetch(`${API_URL}/api/productos`);
 
   if (!response.ok) {

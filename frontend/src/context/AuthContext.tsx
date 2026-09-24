@@ -1,11 +1,20 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+// 1. Tipos de rol que maneja la aplicación
+export type Rol = 'admin' | 'cliente';
+
+// 2. Usuario autenticado: correo + rol (lo entrega la API en /api/login)
+export interface Usuario {
+  email: string;
+  rol: Rol;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  userEmail: string | null;
-  token: string | null; // <-- token que nos devuelve la API
-  login: (email: string, token: string) => void; // <-- ahora recibe también el token
+  user: Usuario | null;
+  token: string | null; // token que devuelve la API (se conserva del Tema 4)
+  login: (usuario: Usuario, token?: string) => void;
   logout: () => void;
 }
 
@@ -23,37 +32,51 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Lee el usuario guardado en localStorage (para que la sesión no se pierda al refrescar con F5).
+// Si el dato no existe o está corrupto, devolvemos null en lugar de romper la app.
+const leerUsuarioGuardado = (): Usuario | null => {
+  try {
+    const guardado = localStorage.getItem('usuario');
+    if (!guardado) return null;
+    const data = JSON.parse(guardado);
+    if (typeof data?.email === 'string' && (data.rol === 'admin' || data.rol === 'cliente')) {
+      return { email: data.email, rol: data.rol };
+    }
+  } catch {
+    // JSON inválido: se ignora y se trata como sesión cerrada
+  }
+  return null;
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  // Inicializamos leyendo localStorage para que la sesión no se pierda al refrescar (F5).
+  const [user, setUser] = useState<Usuario | null>(leerUsuarioGuardado);
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem('token')
   );
-  const [userEmail, setUserEmail] = useState<string | null>(() =>
-    localStorage.getItem('userEmail')
-  );
 
-  // Estamos autenticados solo si existe un token.
-  const isAuthenticated = token !== null;
+  // Estamos autenticados solo si hay un usuario (con su rol).
+  const isAuthenticated = user !== null;
 
-  const login = (email: string, newToken: string) => {
-    setToken(newToken);
-    setUserEmail(email);
-    // Persistimos la sesión en el navegador.
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('userEmail', email);
+  const login = (usuario: Usuario, newToken?: string) => {
+    setUser(usuario);
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    if (newToken) {
+      setToken(newToken);
+      localStorage.setItem('token', newToken);
+    }
   };
 
   const logout = () => {
+    setUser(null);
     setToken(null);
-    setUserEmail(null);
+    localStorage.removeItem('usuario');
     localStorage.removeItem('token');
+    // Limpiamos también las claves de la sesión anterior (Tema 4)
     localStorage.removeItem('userEmail');
   };
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated, userEmail, token, login, logout }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -19,11 +19,11 @@ const Layout = () => {
       <Sidebar
         isCollapsed={isCollapsed}
         isMobileOpen={isMobileOpen}
-        onCloseMobile={() => setIsMobileOpen(false)}
+        closeMobileMenu={() => setIsMobileOpen(false)}
       />
       {/* Área de Contenido Principal */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Navbar isCollapsed={isCollapsed} onToggle={handleToggle} />
+        <Navbar toggleSidebar={handleToggle} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-8">
           <Outlet />
         </main>

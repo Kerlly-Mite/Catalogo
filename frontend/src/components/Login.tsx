@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type Rol } from '../context/AuthContext';
 import { loginRequest } from '../services/api';
 
 const Login = () => {
@@ -22,9 +22,13 @@ const Login = () => {
       // Llamamos al endpoint POST /api/login del backend en Go.
       const data = await loginRequest(email, password);
 
-      // Si llegó aquí, las credenciales fueron válidas: guardamos email y token.
-      login(data.email, data.token);
-      navigate('/');
+      // La API devuelve el rol (admin | cliente) junto al correo (Tema 5).
+      // Normalizamos: cualquier valor distinto de 'admin' se trata como 'cliente'.
+      const rol: Rol = data.rol === 'admin' ? 'admin' : 'cliente';
+      login({ email: data.email, rol }, data.token);
+
+      // Redirigimos según el rol: admin al Dashboard, cliente a la Tienda.
+      navigate(rol === 'admin' ? '/' : '/tienda');
     } catch (err) {
       // Mostramos el mensaje que devolvió la API o uno de conexión.
       setError(
@@ -80,6 +84,12 @@ const Login = () => {
             {loading ? 'Verificando...' : 'Iniciar Sesión'}
           </button>
         </form>
+
+        <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
+          <p className="font-semibold text-slate-700">Cuentas de prueba:</p>
+          <p>👑 Admin: <span className="font-mono">admin@upse.edu.ec / 123456</span></p>
+          <p>🛍️ Cliente: <span className="font-mono">cliente@upse.edu.ec / 123456</span></p>
+        </div>
       </div>
     </div>
   );

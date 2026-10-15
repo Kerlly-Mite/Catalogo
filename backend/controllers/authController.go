@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"strings"
+
 	// Importamos el framework Fiber para tener acceso al contexto (c *fiber.Ctx) de la petición HTTP.
 	"github.com/gofiber/fiber/v2"
 	// Importamos nuestro paquete de modelos para poder usar la estructura LoginRequest.
@@ -15,7 +17,24 @@ func Login(c *fiber.Ctx) error {
 	// Intentamos parsear (transformar) el cuerpo JSON entrante y guardarlo en la variable 'req'.
 	if err := c.BodyParser(&req); err != nil {
 		// Si ocurre un error al parsear (ej. JSON mal formado), retornamos un estado HTTP 400 (Bad Request).
-		return c.Status(400).JSON(fiber.Map{"error": "Cuerpo de petición inválido"})
+		return c.Status(fiber.StatusBadRequest).JSON(models.NewAPIError(fiber.StatusBadRequest, "Cuerpo de petición inválido", nil))
+	}
+
+	// Paso 2 (Fase 1): validamos que email y password no vengan vacíos antes de comparar credenciales.
+	req.Email = strings.TrimSpace(req.Email)
+	if req.Email == "" || req.Password == "" {
+		faltantes := []string{}
+		if req.Email == "" {
+			faltantes = append(faltantes, "email")
+		}
+		if req.Password == "" {
+			faltantes = append(faltantes, "password")
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(models.NewAPIError(
+			fiber.StatusBadRequest,
+			"Email y contraseña son obligatorios",
+			fiber.Map{"campos_vacios": faltantes},
+		))
 	}
 
 	// Evaluamos si el email y la contraseña coinciden con las credenciales predefinidas.
@@ -29,6 +48,6 @@ func Login(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"token": "fake-jwt-token-456", "email": req.Email, "rol": "cliente"})
 	default:
 		// Si las credenciales son incorrectas, retornamos un estado HTTP 401 (No autorizado) con un mensaje de error.
-		return c.Status(401).JSON(fiber.Map{"error": "Credenciales incorrectas"})
+		return c.Status(fiber.StatusUnauthorized).JSON(models.NewAPIError(fiber.StatusUnauthorized, "Credenciales incorrectas", nil))
 	}
 }

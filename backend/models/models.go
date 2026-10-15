@@ -20,3 +20,21 @@ type Producto struct {
 	// Img es la URL o ruta que apunta a la fotografía o imagen del producto.
 	Img    string  `json:"img"`
 }
+
+// APIError estandariza TODOS los mensajes de error HTTP de la API.
+type APIError struct {
+	// Status es el código HTTP del error (400, 401, 404...).
+	Status int `json:"status"`
+	// Message es el mensaje legible que describe el error.
+	Message string `json:"message"`
+	// Details es información adicional opcional (ej. campos inválidos). Se omite si es nil.
+	Details interface{} `json:"details,omitempty"`
+	// Error repite Message: el frontend actual lee `data.error` en el login,
+	// así mantenemos compatibilidad sin tocar React (regla 3 del DRS).
+	Error string `json:"error"`
+}
+
+// NewAPIError construye un APIError rellenando también el campo de compatibilidad.
+func NewAPIError(status int, message string, details interface{}) APIError {
+	return APIError{Status: status, Message: message, Details: details, Error: message}
+}

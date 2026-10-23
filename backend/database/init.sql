@@ -50,7 +50,23 @@ INSERT INTO productos (id, nombre, descripcion, precio, categoria, img, galeria)
 (4, 'Mascarilla Nocturna',
  'Mascarilla de noche con colágeno y vitamina E. Repara la piel mientras duermes y recupera la luminosidad al despertar.',
  50.00, 'Mascarilla', 'https://picsum.photos/seed/mascarilla/150',
- ARRAY['https://picsum.photos/seed/mascarilla1/600','https://picsum.photos/seed/mascarilla2/600','https://picsum.photos/seed/mascarilla3/600']);
+ ARRAY['https://picsum.photos/seed/mascarilla1/600','https://picsum.photos/seed/mascarilla2/600','https://picsum.photos/seed/mascarilla3/600']),
+(5, 'Serum Anti-Edad Retinol',
+ 'Serum de retinol encapsulado que suaviza líneas de expresión y mejora la firmeza. Uso nocturno recomendado.',
+ 58.00, 'Serum', 'https://picsum.photos/seed/retinol/150',
+ ARRAY['https://picsum.photos/seed/retinol1/600','https://picsum.photos/seed/retinol2/600','https://picsum.photos/seed/retinol3/600']),
+(6, 'Crema Contorno de Ojos',
+ 'Contorno de ojos con cafeína y péptidos. Reduce bolsas y ojeras, hidrata la zona más delicada del rostro.',
+ 26.00, 'Crema', 'https://picsum.photos/seed/ojos/150',
+ ARRAY['https://picsum.photos/seed/ojos1/600','https://picsum.photos/seed/ojos2/600','https://picsum.photos/seed/ojos3/600']),
+(7, 'Tónico Exfoliante AHA-BHA',
+ 'Exfoliación química suave con ácidos AHA y BHA. Renueva la textura de la piel y desobstruye los poros.',
+ 34.00, 'Tónico', 'https://picsum.photos/seed/exfoliante/150',
+ ARRAY['https://picsum.photos/seed/exfoliante1/600','https://picsum.photos/seed/exfoliante2/600','https://picsum.photos/seed/exfoliante3/600']),
+(8, 'Kit Rutina Completa',
+ 'Kit integral con serum, crema, tónico y mascarilla. La rutina perfecta para comenzar: limpieza, tratamiento e hidratación.',
+ 129.00, 'Kit', 'https://picsum.photos/seed/kit/150',
+ ARRAY['https://picsum.photos/seed/kit1/600','https://picsum.photos/seed/kit2/600','https://picsum.photos/seed/kit3/600']);
 
 -- Como insertamos ids a mano, sincronizamos la secuencia para que los próximos INSERT no choquen.
 SELECT setval(pg_get_serial_sequence('productos', 'id'), (SELECT MAX(id) FROM productos));

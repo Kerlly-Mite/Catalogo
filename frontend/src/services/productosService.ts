@@ -4,18 +4,19 @@
 // En la Unidad 2, estas funciones se reemplazarán por fetch a GET /api/productos
 // sin necesidad de modificar los componentes que las consumen.
 
-import { productosMock, type Producto } from "../data/productos";
+import type { Producto } from "../data/productos";
 
-// Simula GET /api/productos (lista completa)
-export const getProductos = (): Promise<Producto[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(productosMock), 400);
-  });
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
+export const getProductos = async (): Promise<Producto[]> => {
+  const res = await fetch(`${API_URL}/api/productos`);
+  if (!res.ok) throw new Error("No se pudieron cargar los productos");
+  return res.json();
 };
 
-// Simula GET /api/productos/:id (detalle de un producto)
-export const getProductoById = (id: number): Promise<Producto | undefined> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(productosMock.find((p) => p.id === id)), 300);
-  });
+export const getProductoById = async (id: number): Promise<Producto | undefined> => {
+  const res = await fetch(`${API_URL}/api/productos/${id}`);
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw new Error("No se pudo cargar el producto");
+  return res.json();
 };

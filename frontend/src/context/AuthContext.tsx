@@ -1,5 +1,6 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { limpiarCachesDeDatos } from '../pwa/cache';
 
 // 1. Tipos de rol que maneja la aplicación
 export type Rol = 'admin' | 'cliente';
@@ -73,6 +74,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem('token');
     // Limpiamos también las claves de la sesión anterior (Tema 4)
     localStorage.removeItem('userEmail');
+    // PWA: vaciamos las cachés de datos del service worker al cerrar sesión
+    void limpiarCachesDeDatos();
   };
 
   return (

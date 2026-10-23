@@ -1,15 +1,19 @@
 // src/components/Checkout.tsx
-// Flujo de checkout simulado (Tema 5):
+// Checkout REAL: envía el pedido a POST /api/checkout (transacción ACID en el backend):
 // - Formulario de envío con validación básica
 // - Resumen del pedido en tiempo real
-// - Simula el procesamiento del pago y redirige a /confirmacion
+// - Si el servidor responde bien: vacía el carrito y muestra la confirmación con el pedido REAL
+// - Si falla (stock, validación, caída de la BD): muestra el mensaje y CONSERVA el carrito
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { crearPedido } from '../services/checkoutService';
+import { mensajeDeError } from '../services/http';
+import { useOnlineStatus } from '../pwa/useOnlineStatus';
 
 interface DatosEnvio {
   nombre: string;
-  email: string;
   direccion: string;
   ciudad: string;
   telefono: string;
@@ -18,19 +22,24 @@ interface DatosEnvio {
 
 const METODOS_PAGO = ["Tarjeta de crédito", "Transferencia bancaria", "Efectivo contra entrega"];
 
+const CAMPO =
+  "w-full min-h-[44px] px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition";
+
 const Checkout = () => {
   const { cart, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [datos, setDatos] = useState<DatosEnvio>({
     nombre: "",
-    email: "",
     direccion: "",
     ciudad: "",
     telefono: "",
     metodoPago: METODOS_PAGO[0],
   });
+  const online = useOnlineStatus(); // PWA: sin conexión no se puede pagar
   const [procesando, setProcesando] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
   // Si el carrito está vacío, mostramos un aviso en lugar del formulario
   if (cart.length === 0) {
@@ -44,32 +53,48 @@ const Checkout = () => {
     );
   }
 
+  // El pedido se registra a nombre de la cuenta con sesión (el backend usa el email del token).
+  const emailCuenta = user?.email ?? "";
+
   const handleChange = (campo: keyof DatosEnvio, valor: string) => {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (procesando) return; // evita enviar el pedido dos veces con doble clic
+    setError("");
     setProcesando(true);
 
-    // Simulamos el procesamiento del pago con un pequeño retraso
-    setTimeout(() => {
-      const pedido = {
-        numero: `MC-${Date.now().toString().slice(-6)}`,
-        items: cart.map((item) => ({
-          nombre: item.nombre,
-          cantidad: item.cantidad,
-          precio: item.precio,
-        })),
-        total: totalPrice,
-        cliente: { nombre: datos.nombre, email: datos.email, ciudad: datos.ciudad },
-        fecha: new Date().toLocaleString("es-EC"),
-      };
+    try {
+      const pedidoCreado = await crearPedido({
+        cliente: {
+          nombre: datos.nombre.trim(),
+          email: emailCuenta,
+          direccion: datos.direccion.trim(),
+          ciudad: datos.ciudad.trim(),
+          telefono: datos.telefono.trim(),
+        },
+        metodoPago: datos.metodoPago,
+        // Solo viajan id y cantidad: el precio y el total los calcula el SERVIDOR.
+        items: cart.map((item) => ({ id: item.id, cantidad: item.cantidad })),
+      });
 
-      // Vaciamos el carrito y pasamos los datos del pedido a la confirmación
+      // Pedido guardado: vaciamos el carrito y pasamos el pedido REAL a la confirmación.
+      const pedido = {
+        numero: pedidoCreado.numero,
+        items: pedidoCreado.items.map((it) => ({ nombre: it.nombre, cantidad: it.cantidad, precio: it.precio })),
+        total: pedidoCreado.total,
+        cliente: { nombre: pedidoCreado.cliente, email: emailCuenta, ciudad: datos.ciudad.trim() },
+        fecha: new Date(pedidoCreado.fecha).toLocaleString("es-EC"),
+      };
       clearCart();
       navigate("/confirmacion", { state: { pedido } });
-    }, 1200);
+    } catch (err) {
+      // El carrito NO se vacía: la persona puede corregir o reintentar.
+      setError(mensajeDeError(err));
+      setProcesando(false);
+    }
   };
 
   return (
@@ -79,68 +104,68 @@ const Checkout = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ===== FORMULARIO DE ENVÍO ===== */}
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-5">
+          {error && (
+            <div role="alert" className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
+              {error}
+            </div>
+          )}
+
           <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800 mb-4">Datos de Envío</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nombre completo *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre completo *</label>
                 <input
                   type="text"
                   required
+                  minLength={2}
                   value={datos.nombre}
                   onChange={(e) => handleChange("nombre", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className={CAMPO}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Correo electrónico *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta (correo)</label>
                 <input
                   type="email"
-                  required
-                  value={datos.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  readOnly
+                  value={emailCuenta}
+                  className={`${CAMPO} bg-slate-50 text-slate-500`}
+                  aria-describedby="ayuda-cuenta"
                 />
+                <p id="ayuda-cuenta" className="text-xs text-slate-500 mt-1">
+                  El pedido se registra a nombre de tu cuenta.
+                </p>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Dirección *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Dirección *</label>
                 <input
                   type="text"
                   required
                   value={datos.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className={CAMPO}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ciudad *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad *</label>
                 <input
                   type="text"
                   required
                   value={datos.ciudad}
                   onChange={(e) => handleChange("ciudad", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className={CAMPO}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Teléfono *
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono *</label>
                 <input
                   type="tel"
                   required
                   value={datos.telefono}
                   onChange={(e) => handleChange("telefono", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className={CAMPO}
                 />
               </div>
             </div>
@@ -152,7 +177,7 @@ const Checkout = () => {
               {METODOS_PAGO.map((metodo) => (
                 <label
                   key={metodo}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-300 transition"
+                  className="flex items-center gap-3 min-h-[44px] p-3 rounded-lg border border-slate-200 cursor-pointer hover:border-indigo-300 transition"
                 >
                   <input
                     type="radio"
@@ -170,11 +195,16 @@ const Checkout = () => {
 
           <button
             type="submit"
-            disabled={procesando}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={procesando || !online}
+            className="w-full min-h-[44px] bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {procesando ? "Procesando pago..." : "Confirmar Pedido"}
+            {procesando ? "Procesando pedido..." : "Confirmar Pedido"}
           </button>
+          {!online && (
+            <p role="alert" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              Sin conexión: el pago requiere internet. Podrás confirmar tu pedido cuando vuelva la conexión.
+            </p>
+          )}
         </form>
 
         {/* ===== RESUMEN DEL PEDIDO ===== */}
@@ -186,18 +216,15 @@ const Checkout = () => {
                 <span className="text-slate-600">
                   {item.nombre} × {item.cantidad}
                 </span>
-                <span className="font-semibold text-slate-800">
-                  ${(item.precio * item.cantidad).toFixed(2)}
-                </span>
+                <span className="font-semibold text-slate-800">${(item.precio * item.cantidad).toFixed(2)}</span>
               </div>
             ))}
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-800 font-bold">Total</span>
-            <span className="text-2xl font-bold text-indigo-600">
-              ${totalPrice.toFixed(2)}
-            </span>
+            <span className="text-2xl font-bold text-indigo-600">${totalPrice.toFixed(2)}</span>
           </div>
+          <p className="text-xs text-slate-500 mt-3">El total final lo confirma el servidor con los precios vigentes.</p>
         </div>
       </div>
     </div>

@@ -1,13 +1,13 @@
 // src/data/red.ts
-// Datos de ejemplo (mock) de la red multinivel de referidos.
-// Incluye la estructura jerárquica (árbol) y funciones puras para calcular
-// comisiones, totales y el nivel alcanzado por el usuario.
+// Tipos de la red multinivel de referidos y funciones puras para calcular
+// totales y el nivel alcanzado. Los DATOS vienen de la API (/api/red/mia), no de este archivo.
 
 export interface Referido {
   id: number;
   nombre: string;
   nivel: number;     // 1 = directo, 2 = indirecto, 3 = tercer nivel
-  ventas: number;    // ventas mensuales en dólares
+  ventas: number;    // ventas acumuladas en dólares
+  saldo?: number;    // comisiones devengadas (la API lo envía en /api/red/mia)
   hijos?: Referido[]; // referidos de un nivel más abajo
 }
 
@@ -16,44 +16,6 @@ export const TASA_COMISION: Record<number, number> = {
   1: 0.10, // 10 % de las ventas de nivel 1
   2: 0.05, // 5 % de las ventas de nivel 2
   3: 0.02, // 2 % de las ventas de nivel 3
-};
-
-// Raíz del árbol: el usuario autenticado (nivel 0) con sus referidos
-export const redInicial: Referido = {
-  id: 0,
-  nombre: "Tú",
-  nivel: 0,
-  ventas: 2400,
-  hijos: [
-    {
-      id: 1,
-      nombre: "Ana García",
-      nivel: 1,
-      ventas: 1200,
-      hijos: [
-        {
-          id: 4,
-          nombre: "Carlos Ruiz",
-          nivel: 2,
-          ventas: 500,
-          hijos: [
-            { id: 7, nombre: "Diana Paz", nivel: 3, ventas: 300 },
-          ],
-        },
-        { id: 5, nombre: "Sofía León", nivel: 2, ventas: 430 },
-      ],
-    },
-    {
-      id: 2,
-      nombre: "Luis Poveda",
-      nivel: 1,
-      ventas: 850,
-      hijos: [
-        { id: 6, nombre: "Marco Díaz", nivel: 2, ventas: 380 },
-      ],
-    },
-    { id: 3, nombre: "Marta Sánchez", nivel: 1, ventas: 430 },
-  ],
 };
 
 // Total de referidos de la red (sin contar al usuario raíz)

@@ -1,95 +1,236 @@
 // src/components/Dashboard.tsx
-// Resumen general con KPIs calculados desde el estado real (Tema 5):
-// - Funciones puras de data/red.ts en lugar de valores estáticos
-import { redInicial, contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido } from '../data/red';
+// Panel del administrador con datos REALES del negocio (Fase 6): cada cifra viene de /api/reportes/*,
+// calculada con SQL de agregación sobre pedidos y el ledger de comisiones. Nada se calcula con datos fijos.
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  getComisionesPendientes,
+  getResumen,
+  getTopProductos,
+  getTopReferidos,
+  type ComisionesPendientesReporte,
+  type ReporteResumen,
+  type TopProducto,
+  type TopReferido,
+} from '../services/reportesService';
+import { mensajeDeError } from '../services/http';
+
+const dinero = (n: number): string =>
+  `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Todo lo que muestra el panel para un periodo. `clave` identifica el periodo con el que se pidió.
+interface Datos {
+  clave: string;
+  resumen: ReporteResumen;
+  productos: TopProducto[];
+  referidos: TopReferido[];
+  deuda: ComisionesPendientesReporte;
+}
+
+const campoFecha =
+  'min-h-[44px] w-full px-3 rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 const Dashboard = () => {
-  const referidosDirectos = redInicial.hijos?.length ?? 0;
-  const referidosActivos = contarRed(redInicial);
-  const ventasRed = sumarVentasRed(redInicial);
-  const comisionesMes = sumarComisiones(redInicial);
-  const nivel = nivelAlcanzado(referidosDirectos);
+  const [desde, setDesde] = useState<string>('');
+  const [hasta, setHasta] = useState<string>('');
+  const [datos, setDatos] = useState<Datos | null>(null);
+  const [fallo, setFallo] = useState<{ clave: string; mensaje: string } | null>(null);
 
-  const kpis = [
-    { etiqueta: "Ventas de la Red", valor: `$${ventasRed.toLocaleString()}`, color: "text-indigo-600" },
-    { etiqueta: "Referidos Activos", valor: referidosActivos.toString(), color: "text-indigo-600" },
-    { etiqueta: "Comisiones del Mes", valor: `$${comisionesMes.toFixed(2)}`, color: "text-green-600" },
-    { etiqueta: "Nivel Actual", valor: nivel, color: "text-amber-600" },
-  ];
+  const clave = `${desde}|${hasta}`;
+  const rangoValido = !desde || !hasta || desde <= hasta;
+  // "Cargando" = todavía no llegó la respuesta del periodo que se está mirando.
+  const cargando = rangoValido && datos?.clave !== clave && fallo?.clave !== clave;
 
-  // Top 3 referidos por ventas (sin recursión: solo nivel 1)
-  const topReferidos = [...(redInicial.hijos ?? [])]
-    .sort((a, b) => b.ventas - a.ventas)
-    .slice(0, 3);
+  useEffect(() => {
+    if (!rangoValido) return;
+    let cancelado = false;
+    Promise.all([
+      getResumen(desde, hasta),
+      getTopProductos(desde, hasta),
+      getTopReferidos(desde, hasta),
+      getComisionesPendientes(), // la deuda es de hoy: no depende del periodo
+    ])
+      .then(([resumen, productos, referidos, deuda]) => {
+        if (cancelado) return;
+        setDatos({ clave, resumen, productos, referidos, deuda });
+        setFallo(null);
+      })
+      .catch((e) => !cancelado && setFallo({ clave, mensaje: mensajeDeError(e) }));
+    return () => {
+      cancelado = true;
+    };
+  }, [desde, hasta, clave, rangoValido]);
+
+  const limpiar = () => {
+    setDesde('');
+    setHasta('');
+  };
+
+  const r = datos?.resumen;
+  const kpis = r
+    ? [
+        { etiqueta: 'Total vendido', valor: dinero(r.total_vendido), nota: 'Sin pedidos cancelados', color: 'text-indigo-600' },
+        { etiqueta: 'Pedidos', valor: r.pedidos.toString(), nota: `${r.pedidos_cancelados} cancelado(s)`, color: 'text-indigo-600' },
+        { etiqueta: 'Ticket promedio', valor: dinero(r.ticket_promedio), nota: 'Total ÷ pedidos', color: 'text-indigo-600' },
+        { etiqueta: 'Comisiones devengadas', valor: dinero(r.comisiones_devengadas), nota: `${dinero(r.comisiones_pagadas)} ya pagadas`, color: 'text-green-600' },
+        { etiqueta: 'Comisiones por pagar', valor: dinero(r.comisiones_pendientes), nota: 'Pendientes de liquidar', color: 'text-amber-600' },
+        { etiqueta: 'Distribuidores en la red', valor: r.distribuidores.toString(), nota: 'Sin contar la raíz', color: 'text-slate-700' },
+      ]
+    : [];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">Resumen General</h1>
+      <p className="text-slate-500 text-sm mb-6">Ventas y comisiones reales del negocio, calculadas desde la base de datos.</p>
 
-      {/* ===== KPIs DERIVADOS DEL ESTADO ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {kpis.map((kpi) => (
-          <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-            <p className="text-sm text-slate-500 uppercase font-semibold">{kpi.etiqueta}</p>
-            <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.valor}</p>
-          </div>
-        ))}
+      {/* ===== FILTRO POR PERIODO (opcional: vacío = todo el historial) ===== */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+          <label className="block text-sm font-semibold text-slate-600">
+            Desde
+            <input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} className={`${campoFecha} mt-1`} />
+          </label>
+          <label className="block text-sm font-semibold text-slate-600">
+            Hasta
+            <input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} className={`${campoFecha} mt-1`} />
+          </label>
+          <button
+            type="button"
+            onClick={limpiar}
+            disabled={!desde && !hasta}
+            className="min-h-[44px] px-4 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Ver todo
+          </button>
+        </div>
+        <p className="text-xs text-slate-500 mt-2">
+          {desde || hasta ? `Periodo: ${desde || 'inicio'} → ${hasta || 'hoy'} (ambos días incluidos).` : 'Mostrando todo el historial.'}
+        </p>
+        {!rangoValido && <p className="text-sm text-red-600 mt-2">La fecha "Desde" no puede ser posterior a "Hasta".</p>}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ===== TOP REFERIDOS ===== */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Referidos del Mes</h2>
-          <div className="space-y-3">
-            {topReferidos.map((ref, idx) => (
-              <div
-                key={ref.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-slate-800">{ref.nombre}</p>
-                    <p className="text-xs text-slate-500">Nivel {ref.nivel}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-slate-800">${ref.ventas.toLocaleString()}</p>
-                  <p className="text-xs text-indigo-600 font-semibold">
-                    +${comisionDeReferido(ref).toFixed(2)}
-                  </p>
-                </div>
+      {fallo?.clave === clave && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-200">{fallo.mensaje}</div>
+      )}
+      {cargando && <p className="text-slate-500 mb-4">Cargando reportes...</p>}
+
+      {/* ===== KPIs ===== */}
+      {r && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+          {kpis.map((kpi) => (
+            <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
+              <p className="text-sm text-slate-500 uppercase font-semibold">{kpi.etiqueta}</p>
+              <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.valor}</p>
+              <p className="text-xs text-slate-400 mt-1">{kpi.nota}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {datos && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ===== TOP PRODUCTOS ===== */}
+          <section className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Productos más vendidos</h2>
+            {datos.productos.length === 0 ? (
+              <p className="text-slate-500 text-sm">No hay ventas en este periodo.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600 text-left">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Producto</th>
+                      <th className="p-3 text-right">Unidades</th>
+                      <th className="p-3 text-right">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {datos.productos.map((p, i) => (
+                      <tr key={p.id}>
+                        <td className="p-3 text-slate-500">{i + 1}</td>
+                        <td className="p-3 font-medium">{p.nombre}</td>
+                        <td className="p-3 text-right">{p.unidades}</td>
+                        <td className="p-3 text-right font-bold">{dinero(p.ingresos)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
+          </section>
 
-        {/* ===== PROGRESO DE NIVEL ===== */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Progreso al Siguiente Nivel</h2>
-          <p className="text-slate-500 text-sm mb-4">
-            {referidosDirectos} referidos directos. El nivel se calcula con:
-          </p>
-          <ul className="space-y-2 text-sm text-slate-600 mb-6">
-            <li className="flex justify-between"><span>Bronce</span><span>0 – 1 directos</span></li>
-            <li className="flex justify-between"><span>Plata</span><span>2 – 3 directos</span></li>
-            <li className="flex justify-between"><span>Oro</span><span>4 – 5 directos</span></li>
-            <li className="flex justify-between"><span>Diamante</span><span>6+ directos</span></li>
-          </ul>
+          {/* ===== TOP DISTRIBUIDORES ===== */}
+          <section className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Distribuidores con más comisión</h2>
+            {datos.referidos.length === 0 ? (
+              <p className="text-slate-500 text-sm">Ninguna venta generó comisiones en este periodo.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600 text-left">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Distribuidor</th>
+                      <th className="p-3 text-right">Pedidos</th>
+                      <th className="p-3 text-right">Ventas de su red</th>
+                      <th className="p-3 text-right">Comisión</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {datos.referidos.map((d, i) => (
+                      <tr key={d.referido_id}>
+                        <td className="p-3 text-slate-500">{i + 1}</td>
+                        <td className="p-3 font-medium">{d.nombre}</td>
+                        <td className="p-3 text-right">{d.pedidos}</td>
+                        <td className="p-3 text-right">{dinero(d.ventas_red)}</td>
+                        <td className="p-3 text-right font-bold text-green-700">{dinero(d.comisiones)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
-          <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-              style={{ width: `${Math.min((referidosDirectos / 6) * 100, 100)}%` }}
-            />
-          </div>
-          <p className="text-center text-sm text-slate-500 mt-2 font-semibold">
-            Nivel actual: {nivel} ({referidosDirectos} / 6 directos para Diamante)
-          </p>
+          {/* ===== DEUDA DE COMISIONES ===== */}
+          <section className="bg-white p-6 rounded-lg shadow-sm border border-slate-100 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="text-lg font-bold text-slate-800">Comisiones pendientes de pago</h2>
+              <span className="text-sm text-slate-600">
+                Total adeudado: <span className="font-bold text-amber-700">{dinero(datos.deuda.total_pendiente)}</span>
+              </span>
+            </div>
+            {datos.deuda.data.length === 0 ? (
+              <p className="text-slate-500 text-sm">No se le debe nada a ningún distribuidor.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600 text-left">
+                    <tr>
+                      <th className="p-3">Distribuidor</th>
+                      <th className="p-3 text-right">Comisiones</th>
+                      <th className="p-3 text-right">Pendiente</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {datos.deuda.data.map((d) => (
+                      <tr key={d.referido_id}>
+                        <td className="p-3 font-medium">{d.nombre}</td>
+                        <td className="p-3 text-right">{d.comisiones}</td>
+                        <td className="p-3 text-right font-bold">{dinero(d.pendiente)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Link to="/admin/liquidaciones" className="inline-flex items-center min-h-[44px] mt-4 text-indigo-600 font-semibold hover:underline">
+              Ir a liquidaciones →
+            </Link>
+          </section>
         </div>
-      </div>
+      )}
     </div>
   );
 };

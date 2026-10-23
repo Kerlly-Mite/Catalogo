@@ -60,3 +60,33 @@ export const getProductos = async (): Promise<ProductoApi[]> => {
 
   return response.json();
 };
+
+// Respuesta de POST /api/register: igual que el login + nombre y el código de referido propio.
+export interface RegisterResponse extends LoginResponse {
+  nombre: string;
+  codigo_referido: string;
+}
+
+/**
+ * Crea una cuenta nueva (POST /api/register). El código de referido es opcional.
+ * Si todo sale bien, la API ya devuelve el token (inicio de sesión automático).
+ */
+export const registerRequest = async (
+  nombre: string,
+  email: string,
+  password: string,
+  ref?: string
+): Promise<RegisterResponse> => {
+  const response = await fetch(`${API_URL}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, ref: ref?.trim() || undefined }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message ?? data.error ?? 'No se pudo crear la cuenta');
+  }
+
+  return response.json();
+};

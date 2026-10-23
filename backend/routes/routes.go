@@ -1,24 +1,76 @@
-// Declaramos el paquete routes, cuya única responsabilidad es registrar los endpoints de la API.
 package routes
 
 import (
-	// Importamos Fiber para poder recibir y configurar la instancia principal de la aplicación.
 	"github.com/gofiber/fiber/v2"
-	// Importamos nuestro paquete de controladores, donde residen las funciones que se ejecutarán en cada ruta.
+
 	"multicatalogo-backend/controllers"
+	"multicatalogo-backend/middleware"
 )
 
-// SetupRoutes es una función que recibe un puntero a la aplicación Fiber (*fiber.App) para inyectarle las rutas.
-func SetupRoutes(app *fiber.App) {
-	// Definimos una ruta HTTP POST en "/api/login" y la enlazamos a la función Login del paquete controllers.
-	app.Post("/api/login", controllers.Login)
+// Dependencias agrupa los controladores que main.go crea e inyecta.
+type Dependencias struct {
+	Auth     *controllers.AuthController
+	Producto *controllers.ProductoController
+	Red      *controllers.RedController
+	Checkout *controllers.CheckoutController
+	Health   *controllers.HealthController
+	Pedido   *controllers.PedidoController
 
-	// Definimos una ruta HTTP GET en "/api/productos" y la enlazamos a la función GetProductos del paquete controllers.
-	app.Get("/api/productos", controllers.GetProductos)
+	Liquidacion *controllers.LiquidacionController
+	Reporte     *controllers.ReporteController
+	Usuario     *controllers.UsuarioController
 
-	// Detalle de un producto por id (valida que el id sea numérico).
-	app.Get("/api/productos/:id", controllers.GetProductoPorID)
+	// JWTSecret es el secreto con el que se validan los tokens en las rutas protegidas.
+	JWTSecret string
+}
 
-	// Verificación de estado del servidor.
-	app.Get("/api/health", controllers.Health)
+// SetupRoutes registra todos los endpoints de la API.
+func SetupRoutes(app *fiber.App, d Dependencias) {
+	api := app.Group("/api")
+
+	// Seguridad por defecto: cada ruta protegida lleva su middleware explícito.
+	autenticado := middleware.RequireAuth(d.JWTSecret)
+	soloAdmin := middleware.RequireAdmin()
+
+	// ---- Públicas ----
+	api.Get("/health", d.Health.Health)
+	api.Post("/login", d.Auth.Login)
+	api.Post("/register", d.Auth.Register)
+	api.Get("/productos", d.Producto.GetProductos)
+	api.Get("/productos/:id", d.Producto.GetProductoPorID)
+
+	// ---- Requieren sesión (401 sin token válido) ----
+	// El árbol GLOBAL de la red es información del negocio: solo admin (cada usuario ve lo suyo en /red/mia).
+	api.Get("/red", autenticado, soloAdmin, d.Red.GetRed)
+	api.Post("/checkout", autenticado, d.Checkout.Checkout)
+
+	// ---- Red propia, ledger de comisiones y liquidaciones ----
+	api.Get("/red/mia", autenticado, d.Red.Mia)
+	api.Get("/comisiones/mias", autenticado, d.Red.ComisionesMias)
+	api.Get("/liquidaciones/mias", autenticado, d.Liquidacion.Mias)
+	api.Get("/liquidaciones/deuda", autenticado, soloAdmin, d.Liquidacion.Deuda)
+	api.Get("/liquidaciones", autenticado, soloAdmin, d.Liquidacion.Listar)
+	api.Post("/liquidaciones", autenticado, soloAdmin, d.Liquidacion.Liquidar)
+
+	// ---- Pedidos (Rutas fijas ANTES de /:id) ----
+	api.Get("/pedidos/mios", autenticado, d.Pedido.Mios)
+	api.Get("/pedidos", autenticado, soloAdmin, d.Pedido.Listar)
+	api.Get("/pedidos/:id", autenticado, d.Pedido.Detalle)
+	api.Patch("/pedidos/:id/estado", autenticado, soloAdmin, d.Pedido.CambiarEstado)
+
+	// ---- Administración de productos (RequireAuth + RequireAdmin) ----
+	api.Post("/productos", autenticado, soloAdmin, d.Producto.CrearProducto)
+	api.Put("/productos/:id", autenticado, soloAdmin, d.Producto.ActualizarProducto)
+	api.Delete("/productos/:id", autenticado, soloAdmin, d.Producto.EliminarProducto)
+	api.Get("/admin/productos", autenticado, soloAdmin, d.Producto.ListarAdmin)
+
+	// ---- Reportes (Fase 6, solo admin) ----
+	api.Get("/reportes/resumen", autenticado, soloAdmin, d.Reporte.Resumen)
+	api.Get("/reportes/top-productos", autenticado, soloAdmin, d.Reporte.TopProductos)
+	api.Get("/reportes/top-referidos", autenticado, soloAdmin, d.Reporte.TopReferidos)
+	api.Get("/reportes/comisiones-pendientes", autenticado, soloAdmin, d.Reporte.ComisionesPendientes)
+
+	// ---- Administración de usuarios (Fase 7, solo admin) ----
+	api.Get("/usuarios", autenticado, soloAdmin, d.Usuario.Listar)
+	api.Patch("/usuarios/:id", autenticado, soloAdmin, d.Usuario.Actualizar)
 }

@@ -11,8 +11,15 @@ import Carrito from './components/Carrito';
 import Checkout from './components/Checkout';
 import Confirmacion from './components/Confirmacion';
 import Login from './components/Login';
+import Registro from './components/Registro';
+import MisPedidos from './components/MisPedidos';
+import AdminProductos from './components/AdminProductos';
+import AdminPedidos from './components/AdminPedidos';
+import AdminLiquidaciones from './components/AdminLiquidaciones';
+import AdminUsuarios from './components/AdminUsuarios';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import PwaStatus from './pwa/PwaStatus';
 
 // Componente para proteger las rutas privadas: exige estar autenticado
 const ProtectedRoute = () => {
@@ -59,9 +66,11 @@ function App() {
     <AuthProvider> {/* Proveedor de Autenticación */}
       <CartBoundary> {/* Proveedor del Carrito (uno por usuario) */}
         <BrowserRouter>
+          <PwaStatus /> {/* PWA: aviso sin conexión + nueva versión */}
           <Routes>
             {/* Ruta pública */}
             <Route path="/login" element={<Login />} />
+            <Route path="/registro" element={<Registro />} />
 
             {/* Rutas protegidas (requieren login) */}
             <Route element={<ProtectedRoute />}>
@@ -69,7 +78,10 @@ function App() {
                 {/* Solo administrador: Dashboard y Red multinivel */}
                 <Route element={<AdminRoute />}>
                   <Route index element={<Dashboard />} />
-                  <Route path="mi-red" element={<MiRed />} />
+                  <Route path="admin/productos" element={<AdminProductos />} />
+                  <Route path="admin/pedidos" element={<AdminPedidos />} />
+                  <Route path="admin/liquidaciones" element={<AdminLiquidaciones />} />
+                  <Route path="admin/usuarios" element={<AdminUsuarios />} />
                 </Route>
 
                 {/* Ambos roles: flujo de compra en línea */}
@@ -79,6 +91,8 @@ function App() {
                 <Route path="carrito" element={<Carrito />} />
                 <Route path="checkout" element={<Checkout />} />
                 <Route path="confirmacion" element={<Confirmacion />} />
+                <Route path="mis-pedidos" element={<MisPedidos />} />
+                <Route path="mi-red" element={<MiRed />} />
               </Route>
             </Route>
 

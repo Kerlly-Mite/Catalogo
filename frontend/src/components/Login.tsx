@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, type Rol } from '../context/AuthContext';
 import { loginRequest } from '../services/api';
 
@@ -84,6 +84,13 @@ const Login = () => {
             {loading ? 'Verificando...' : 'Iniciar Sesión'}
           </button>
         </form>
+
+        <p className="text-center text-sm text-slate-600 mt-6">
+          ¿No tienes cuenta?{' '}
+          <Link to="/registro" className="text-indigo-600 font-semibold hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
 
         <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
           <p className="font-semibold text-slate-700">Cuentas de prueba:</p>

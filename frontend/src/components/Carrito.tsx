@@ -4,6 +4,7 @@
 // - Enlace al flujo de checkout
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useOnlineStatus } from '../pwa/useOnlineStatus';
 
 const Carrito = () => {
   const {
@@ -13,6 +14,7 @@ const Carrito = () => {
     decrementQuantity,
     totalPrice,
   } = useCart();
+  const online = useOnlineStatus(); // PWA: sin conexión se deshabilita el pago
 
   return (
     <div>
@@ -104,12 +106,27 @@ const Carrito = () => {
                 ${totalPrice.toFixed(2)}
               </span>
             </div>
-            <Link
-              to="/checkout"
-              className="block w-full text-center bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
-            >
-              Proceder al Pago
-            </Link>
+            {online ? (
+              <Link
+                to="/checkout"
+                className="block w-full min-h-[44px] text-center bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+              >
+                Proceder al Pago
+              </Link>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled
+                  className="block w-full min-h-[44px] bg-indigo-600 text-white py-3 rounded-lg font-semibold opacity-50 cursor-not-allowed"
+                >
+                  Proceder al Pago
+                </button>
+                <p role="alert" className="mt-3 text-sm text-amber-700">
+                  Sin conexión: el pago requiere internet.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

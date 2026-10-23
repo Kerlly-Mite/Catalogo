@@ -98,6 +98,12 @@ const Confirmacion = () => {
               Ver Catálogo
             </Link>
           </div>
+          <Link
+            to="/mis-pedidos"
+            className="block text-center mt-4 text-indigo-600 font-semibold hover:underline"
+          >
+            Ver mis pedidos
+          </Link>
         </div>
       </div>
     </div>

@@ -1,0 +1,41 @@
+# Infraestructura del proyecto Catalogo (Fases 2, 3 y 4):
+#   - PostgreSQL 16 : persistencia relacional
+#   - Redis alpine  : caché (patrón Cache-Aside)
+# El backend en Go se ejecuta con "go run ." y depende de ambos servicios.
+# Los valores se leen del archivo .env (si no existe, se usan los de después de ":-").
+services:
+  db:
+    image: postgres:16
+    container_name: catalogo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-catalogo_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-catalogo_pass}
+      POSTGRES_DB: ${DB_NAME:-multicatalogo}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Datos persistentes: sobreviven aunque apagues el contenedor.
+      - pgdata:/var/lib/postgresql/data
+      # Script que crea las tablas y los datos. Solo corre la PRIMERA vez (volumen vacío).
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-catalogo_user} -d ${DB_NAME:-multicatalogo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:alpine
+    container_name: catalogo_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

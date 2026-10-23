@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import InstallButton from "../pwa/InstallButton";
 
 // Definimos la interfaz para las props
 interface NavbarProps {
@@ -37,6 +38,7 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
       </div>
 
       <div className="flex items-center gap-4 md:gap-6">
+        <InstallButton />
         <Link
           to="/carrito"
           className="relative p-2 hover:bg-slate-100 rounded-full transition"

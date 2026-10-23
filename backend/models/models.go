@@ -106,7 +106,10 @@ type ItemCheckout struct {
 type CheckoutRequest struct {
 	Cliente    ClienteCheckout `json:"cliente"`
 	MetodoPago string          `json:"metodoPago"`
-	Items      []ItemCheckout  `json:"items"`
+	// PagoDetalle son los datos del método elegido (tarjeta: últimos 4; transferencia: banco, referencia y
+	// comprobante; efectivo: quién recibe, franja, con cuánto paga). El controlador los valida y los limpia.
+	PagoDetalle map[string]string `json:"pagoDetalle"`
+	Items       []ItemCheckout    `json:"items"`
 }
 
 // PedidoItem es una línea ya guardada del pedido (con nombre y precio reales de la BD).
@@ -175,12 +178,13 @@ type PedidoListado struct {
 // PedidoDetalle es un pedido con sus items (nombre del producto por JOIN) y los datos de envío.
 type PedidoDetalle struct {
 	PedidoListado
-	Direccion  string       `json:"direccion"`
-	Ciudad     string       `json:"ciudad"`
-	Telefono   string       `json:"telefono"`
-	MetodoPago string       `json:"metodo_pago"`
-	UsuarioID  int          `json:"-"` // dueño del pedido: se usa para autorizar, no se envía
-	Items      []PedidoItem `json:"items"`
+	Direccion   string            `json:"direccion"`
+	Ciudad      string            `json:"ciudad"`
+	Telefono    string            `json:"telefono"`
+	MetodoPago  string            `json:"metodo_pago"`
+	PagoDetalle map[string]string `json:"pago_detalle"`
+	UsuarioID   int               `json:"-"` // dueño del pedido: se usa para autorizar, no se envía
+	Items       []PedidoItem      `json:"items"`
 }
 
 // CambioEstado es el cuerpo de PATCH /api/pedidos/:id/estado.

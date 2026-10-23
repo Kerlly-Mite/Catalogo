@@ -198,3 +198,26 @@ CREATE INDEX IF NOT EXISTS idx_pedidos_estado        ON pedidos(estado);
 
 -- ========== FASE 6: REPORTES (misma migración 006_reportes.sql) ==========
 CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha);
+
+-- ========== IMÁGENES DE PRODUCTOS (misma migración 008_imagenes.sql) ==========
+CREATE TABLE IF NOT EXISTS imagenes (
+    id        SERIAL PRIMARY KEY,
+    tipo      VARCHAR(50)  NOT NULL CHECK (tipo IN ('image/jpeg', 'image/png', 'image/webp')),
+    datos     BYTEA        NOT NULL,
+    tamano    INTEGER      NOT NULL,
+    creado_en TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ========== PAGO POR MÉTODO Y COMPROBANTES (misma migración 009_pago.sql) ==========
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pago_detalle JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- Vouchers de transferencia (imagen o PDF). Se guardan en la BASE DE DATOS (el disco de Render se borra en cada despliegue).
+-- No son públicos: solo el admin puede verlos (GET /api/comprobantes/:id).
+CREATE TABLE IF NOT EXISTS comprobantes (
+    id         SERIAL PRIMARY KEY,
+    usuario_id INTEGER      NOT NULL REFERENCES usuarios(id),
+    tipo       VARCHAR(50)  NOT NULL CHECK (tipo IN ('image/jpeg', 'image/png', 'image/webp', 'application/pdf')),
+    datos      BYTEA        NOT NULL,
+    tamano     INTEGER      NOT NULL,
+    creado_en  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);

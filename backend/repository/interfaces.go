@@ -72,6 +72,14 @@ type DBRepository interface {
 	ListarLiquidaciones(ctx context.Context, usuarioID, page, limit int) ([]models.Liquidacion, int, error)
 	DeudaPorReferido(ctx context.Context) ([]models.DeudaReferido, error)
 
+	// Fotos de productos: se guardan en la base de datos (el disco de Render no es permanente).
+	GuardarImagen(ctx context.Context, tipo string, datos []byte) (int, error)
+	ObtenerImagen(ctx context.Context, id int) (tipo string, datos []byte, err error)
+
+	// Comprobantes (vouchers) de transferencia: privados, solo el admin los consulta.
+	GuardarComprobante(ctx context.Context, usuarioID int, tipo string, datos []byte) (int, error)
+	ObtenerComprobante(ctx context.Context, id int) (tipo string, datos []byte, err error)
+
 	// Consulta y gestión de pedidos.
 	ListarPedidos(ctx context.Context, f FiltroPedidos) ([]models.PedidoListado, int, error)
 	ObtenerPedido(ctx context.Context, id int) (*models.PedidoDetalle, error)

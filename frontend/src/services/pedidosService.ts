@@ -32,6 +32,7 @@ export interface PedidoDetalle extends PedidoListado {
   ciudad: string;
   telefono: string;
   metodo_pago: string;
+  pago_detalle?: Record<string, string>;
   items: PedidoItem[];
 }
 

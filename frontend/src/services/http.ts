@@ -25,7 +25,9 @@ export const mensajeDeError = (err: unknown): string =>
 export const apiFetch = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem('token');
   const headers = new Headers(options.headers);
-  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json'); // con FormData el navegador pone el suyo (con el boundary)
+  }
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const metodo = (options.method ?? 'GET').toUpperCase();

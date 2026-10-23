@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -251,11 +252,12 @@ func (r *PostgresRepository) ObtenerPedido(ctx context.Context, id int) (*models
 
 	var d models.PedidoDetalle
 	var fecha time.Time
+	var detalleJSON []byte
 	err := r.db.QueryRow(ctx,
-		`SELECT id, usuario_id, fecha, total, estado, cliente_nombre, cliente_email, direccion, ciudad, telefono, metodo_pago
+		`SELECT id, usuario_id, fecha, total, estado, cliente_nombre, cliente_email, direccion, ciudad, telefono, metodo_pago, pago_detalle
 		   FROM pedidos WHERE id = $1`, id,
 	).Scan(&d.ID, &d.UsuarioID, &fecha, &d.Total, &d.Estado, &d.ClienteNombre, &d.ClienteEmail,
-		&d.Direccion, &d.Ciudad, &d.Telefono, &d.MetodoPago)
+		&d.Direccion, &d.Ciudad, &d.Telefono, &d.MetodoPago, &detalleJSON)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoEncontrado
 	}
@@ -264,6 +266,10 @@ func (r *PostgresRepository) ObtenerPedido(ctx context.Context, id int) (*models
 	}
 	d.Numero = numeroPedido(d.ID)
 	d.Fecha = fecha.Format(time.RFC3339)
+	d.PagoDetalle = map[string]string{}
+	if len(detalleJSON) > 0 {
+		_ = json.Unmarshal(detalleJSON, &d.PagoDetalle) // si el JSON estuviera dañado, se muestra sin detalle
+	}
 
 	rows, err := r.db.Query(ctx,
 		`SELECT pi.producto_id, p.nombre, pi.cantidad, pi.precio_unitario
@@ -568,13 +574,21 @@ func (r *PostgresRepository) GuardarPedido(ctx context.Context, req models.Check
 
 	// Paso 1: registro principal del pedido (total en 0; se calcula con los items).
 	pedido := &models.Pedido{Estado: "pendiente", Cliente: req.Cliente.Nombre, Items: []models.PedidoItem{}}
+	detalle := req.PagoDetalle
+	if detalle == nil {
+		detalle = map[string]string{}
+	}
+	detalleJSON, err := json.Marshal(detalle)
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo preparar el detalle del pago: %w", err)
+	}
 	var fecha time.Time
 	err = tx.QueryRow(ctx,
-		`INSERT INTO pedidos (usuario_id, cliente_nombre, cliente_email, direccion, ciudad, telefono, metodo_pago, total, estado)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 'pendiente')
+		`INSERT INTO pedidos (usuario_id, cliente_nombre, cliente_email, direccion, ciudad, telefono, metodo_pago, total, estado, pago_detalle)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 'pendiente', $8::jsonb)
 		 RETURNING id, fecha`,
 		usuario.ID, req.Cliente.Nombre, req.Cliente.Email, req.Cliente.Direccion,
-		req.Cliente.Ciudad, req.Cliente.Telefono, req.MetodoPago,
+		req.Cliente.Ciudad, req.Cliente.Telefono, req.MetodoPago, string(detalleJSON),
 	).Scan(&pedido.ID, &fecha)
 	if err != nil {
 		return nil, fmt.Errorf("no se pudo insertar el pedido: %w", err)

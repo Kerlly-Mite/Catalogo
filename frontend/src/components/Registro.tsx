@@ -38,9 +38,12 @@ const Registro = () => {
     'w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-md p-6 sm:p-8 border border-slate-200">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 via-blue-600 to-blue-900 px-4 py-8">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-6 sm:p-8 border border-white/40">
         <div className="text-center mb-6">
+          <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center text-white text-xl font-bold shadow-md">
+            MC
+          </div>
           <h2 className="text-3xl font-bold text-slate-900">Crear cuenta</h2>
           <p className="text-slate-500 mt-2">Únete a MultiCatálogo</p>
         </div>
@@ -107,7 +110,7 @@ const Registro = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full min-h-[44px] bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full min-h-[44px] bg-gradient-to-r from-sky-500 to-blue-700 text-white font-bold py-3 rounded-lg hover:from-sky-600 hover:to-blue-800 shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>

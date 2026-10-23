@@ -42,10 +42,14 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-md p-8 border border-slate-200">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-500 via-blue-600 to-blue-900 px-4 py-8">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border border-white/40">
         <div className="text-center mb-8">
+          <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center text-white text-xl font-bold shadow-md">
+            MC
+          </div>
           <h2 className="text-3xl font-bold text-slate-900">MultiCatálogo</h2>
+          <p className="text-sky-700 text-sm font-semibold mt-1">Kerlly Mite</p>
           <p className="text-slate-500 mt-2">Ingresa a tu cuenta para continuar</p>
         </div>
         {error && (
@@ -79,7 +83,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full min-h-[44px] bg-gradient-to-r from-sky-500 to-blue-700 text-white font-bold py-3 rounded-lg hover:from-sky-600 hover:to-blue-800 shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Verificando...' : 'Iniciar Sesión'}
           </button>

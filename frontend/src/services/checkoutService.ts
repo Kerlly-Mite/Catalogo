@@ -19,6 +19,8 @@ export interface ItemCheckout {
 export interface SolicitudCheckout {
   cliente: DatosCliente;
   metodoPago: string;
+  /** Datos del método elegido. Tarjeta: solo titular, últimos 4 y vencimiento (NUNCA el número completo ni el CVV). */
+  pagoDetalle: Record<string, string>;
   items: ItemCheckout[];
 }
 

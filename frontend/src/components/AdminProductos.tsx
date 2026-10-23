@@ -1,14 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   actualizarProducto,
   crearProducto,
   desactivarProducto,
   getProductosAdmin,
+  subirImagen,
   type ProductoAdmin,
   type ProductoForm,
 } from '../services/adminProductosService';
 import type { Pagina } from '../services/pedidosService';
 import { mensajeDeError } from '../services/http';
+import { prepararImagen } from '../utils/imagen';
 import { categorias } from '../data/productos';
 import Paginacion from './Paginacion';
 
@@ -21,7 +23,7 @@ interface FormTexto {
   precio: string;
   categoria: string;
   img: string;
-  galeria: string; // una URL por línea
+  galeria: string[]; // URLs de las fotos de la galería
   stock: string;
 }
 
@@ -31,7 +33,7 @@ const FORM_VACIO: FormTexto = {
   precio: '',
   categoria: categorias[0] ?? '',
   img: '',
-  galeria: '',
+  galeria: [],
   stock: '0',
 };
 
@@ -41,7 +43,7 @@ const aFormTexto = (p: ProductoAdmin): FormTexto => ({
   precio: String(p.precio),
   categoria: p.categoria,
   img: p.img,
-  galeria: p.galeria.join('\n'),
+  galeria: [...p.galeria],
   stock: String(p.stock),
 });
 
@@ -61,6 +63,7 @@ const AdminProductos = () => {
   const [form, setForm] = useState<FormTexto>(FORM_VACIO);
   const [errorForm, setErrorForm] = useState<string>('');
   const [guardando, setGuardando] = useState<boolean>(false);
+  const [subiendo, setSubiendo] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -109,9 +112,15 @@ const AdminProductos = () => {
       precio: Number(form.precio),
       categoria: form.categoria.trim(),
       img: form.img.trim(),
-      galeria: form.galeria.split('\n').map((l) => l.trim()).filter(Boolean),
+      galeria: form.galeria,
       stock: Number(form.stock),
     };
+
+    if (!datos.img) {
+      setErrorForm('Sube una foto principal del producto.');
+      setGuardando(false);
+      return;
+    }
 
     try {
       if (modal.id === null) {
@@ -129,6 +138,49 @@ const AdminProductos = () => {
       setGuardando(false);
     }
   };
+
+  // Reduce la foto, la sube a la API y devuelve su URL pública.
+  const subirArchivo = async (archivo: File): Promise<string> => subirImagen(await prepararImagen(archivo));
+
+  const elegirPrincipal = async (e: ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir la misma foto
+    if (!archivo) return;
+    setErrorForm('');
+    setSubiendo(true);
+    try {
+      const url = await subirArchivo(archivo);
+      setForm((prev) => ({ ...prev, img: url }));
+    } catch (err) {
+      setErrorForm(mensajeDeError(err));
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const elegirGaleria = async (e: ChangeEvent<HTMLInputElement>) => {
+    const archivos = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (archivos.length === 0) return;
+    if (form.galeria.length + archivos.length > 10) {
+      setErrorForm('La galería admite como máximo 10 fotos.');
+      return;
+    }
+    setErrorForm('');
+    setSubiendo(true);
+    try {
+      const urls: string[] = [];
+      for (const archivo of archivos) urls.push(await subirArchivo(archivo));
+      setForm((prev) => ({ ...prev, galeria: [...prev.galeria, ...urls] }));
+    } catch (err) {
+      setErrorForm(mensajeDeError(err));
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const quitarDeGaleria = (indice: number) =>
+    setForm((prev) => ({ ...prev, galeria: prev.galeria.filter((_, i) => i !== indice) }));
 
   const alternarActivo = async (p: ProductoAdmin) => {
     const accion = p.activo ? 'desactivar' : 'activar';
@@ -273,20 +325,58 @@ const AdminProductos = () => {
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Imagen principal (URL)
-              <input className={`${campo} mt-1`} value={form.img} onChange={(e) => setForm({ ...form, img: e.target.value })} placeholder="https://..." />
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              Galería (una URL por línea)
-              <textarea className={`${campo} mt-1 font-mono text-xs`} rows={3} value={form.galeria} onChange={(e) => setForm({ ...form, galeria: e.target.value })} />
-            </label>
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-1">Imagen principal</p>
+              <div className="flex items-center gap-3">
+                {form.img ? (
+                  <img src={form.img} alt="Vista previa" className="w-20 h-20 object-cover rounded-lg border border-slate-200 bg-slate-100" />
+                ) : (
+                  <div className="w-20 h-20 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs text-slate-400 text-center px-1">
+                    Sin imagen
+                  </div>
+                )}
+                <label className="min-h-[44px] px-4 inline-flex items-center rounded-lg border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                  {subiendo ? 'Subiendo...' : form.img ? 'Cambiar foto' : 'Subir foto'}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={subiendo} onChange={elegirPrincipal} />
+                </label>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Elige una foto de tu dispositivo (JPG, PNG o WebP). Se ajusta sola.</p>
+              <details className="mt-2">
+                <summary className="text-xs text-slate-500 cursor-pointer">¿Prefieres usar un enlace?</summary>
+                <input className={`${campo} mt-2`} value={form.img} onChange={(e) => setForm({ ...form, img: e.target.value })} placeholder="https://..." />
+              </details>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-1">Galería (opcional)</p>
+              {form.galeria.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-2">
+                  {form.galeria.map((url, i) => (
+                    <div key={`${url}-${i}`} className="relative">
+                      <img src={url} alt={`Galería ${i + 1}`} className="w-16 h-16 object-cover rounded-lg border border-slate-200 bg-slate-100" />
+                      <button
+                        type="button"
+                        aria-label="Quitar foto"
+                        onClick={() => quitarDeGaleria(i)}
+                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white text-sm font-bold leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="min-h-[44px] px-4 inline-flex items-center rounded-lg border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                {subiendo ? 'Subiendo...' : '+ Agregar fotos'}
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" disabled={subiendo} onChange={elegirGaleria} />
+              </label>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setModal(null)} className="flex-1 min-h-[44px] border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-50">
                 Cancelar
               </button>
-              <button type="submit" disabled={guardando} className="flex-1 min-h-[44px] bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-60">
+              <button type="submit" disabled={guardando || subiendo} className="flex-1 min-h-[44px] bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-60">
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>
             </div>

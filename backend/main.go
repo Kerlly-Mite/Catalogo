@@ -63,6 +63,8 @@ func main() {
 		Pedido:   controllers.NewPedidoController(repo, cache),
 
 		Liquidacion: controllers.NewLiquidacionController(repo),
+		Imagen:      controllers.NewImagenController(repo),
+		Comprobante: controllers.NewComprobanteController(repo),
 		Reporte:     controllers.NewReporteController(repo),
 		Usuario:     controllers.NewUsuarioController(repo),
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +21,80 @@ var metodosPago = map[string]bool{
 	"Tarjeta de crédito":      true,
 	"Transferencia bancaria":  true,
 	"Efectivo contra entrega": true,
+}
+
+// Franjas horarias que ofrece el checkout para "Efectivo contra entrega".
+var franjasEntrega = map[string]bool{
+	"Mañana (8:00 - 12:00)": true,
+	"Tarde (12:00 - 18:00)": true,
+	"Noche (18:00 - 21:00)": true,
+}
+
+var (
+	reUltimos4    = regexp.MustCompile(`^[0-9]{4}$`)
+	reVencimiento = regexp.MustCompile(`^(0[1-9]|1[0-2])/[0-9]{2}$`)
+	reSoloDigitos = regexp.MustCompile(`^[0-9]{1,9}$`)
+)
+
+// recortar quita espacios y limita el largo (en caracteres, no en bytes).
+func recortar(v string, max int) string {
+	v = strings.TrimSpace(v)
+	if r := []rune(v); len(r) > max {
+		return string(r[:max])
+	}
+	return v
+}
+
+// limpiarPagoDetalle valida los datos del método de pago y devuelve SOLO las claves permitidas de ese método.
+// Así nunca se guarda algo que el frontend no debía mandar (por ejemplo un número de tarjeta completo o un CVV).
+func limpiarPagoDetalle(metodo string, in map[string]string) (map[string]string, []string) {
+	out := map[string]string{}
+	problemas := []string{}
+	switch metodo {
+	case "Tarjeta de crédito":
+		out["titular"] = recortar(in["titular"], 80)
+		out["ultimos4"] = recortar(in["ultimos4"], 4)
+		out["vencimiento"] = recortar(in["vencimiento"], 5)
+		if len([]rune(out["titular"])) < 3 {
+			problemas = append(problemas, "pagoDetalle.titular es obligatorio")
+		}
+		if !reUltimos4.MatchString(out["ultimos4"]) {
+			problemas = append(problemas, "pagoDetalle.ultimos4 debe tener 4 dígitos")
+		}
+		if !reVencimiento.MatchString(out["vencimiento"]) {
+			problemas = append(problemas, "pagoDetalle.vencimiento debe tener el formato MM/AA")
+		}
+	case "Transferencia bancaria":
+		out["banco_origen"] = recortar(in["banco_origen"], 60)
+		out["referencia"] = recortar(in["referencia"], 40)
+		out["comprobante_id"] = recortar(in["comprobante_id"], 9)
+		if out["banco_origen"] == "" {
+			problemas = append(problemas, "pagoDetalle.banco_origen es obligatorio")
+		}
+		if len([]rune(out["referencia"])) < 4 {
+			problemas = append(problemas, "pagoDetalle.referencia es obligatoria (mínimo 4 caracteres)")
+		}
+		if !reSoloDigitos.MatchString(out["comprobante_id"]) {
+			problemas = append(problemas, "pagoDetalle.comprobante_id es obligatorio: sube el voucher de la transferencia")
+		}
+	case "Efectivo contra entrega":
+		out["recibe"] = recortar(in["recibe"], 80)
+		out["franja"] = recortar(in["franja"], 40)
+		out["indicaciones"] = recortar(in["indicaciones"], 200)
+		pagaCon, err := strconv.ParseFloat(strings.TrimSpace(in["paga_con"]), 64)
+		if len([]rune(out["recibe"])) < 3 {
+			problemas = append(problemas, "pagoDetalle.recibe es obligatorio")
+		}
+		if !franjasEntrega[out["franja"]] {
+			problemas = append(problemas, "pagoDetalle.franja no es válida")
+		}
+		if err != nil || pagaCon <= 0 || pagaCon > 100000 {
+			problemas = append(problemas, "pagoDetalle.paga_con debe ser un monto válido")
+		} else {
+			out["paga_con"] = strconv.FormatFloat(pagaCon, 'f', 2, 64)
+		}
+	}
+	return out, problemas
 }
 
 // CheckoutController procesa las compras. Recibe repositorio y caché por interfaz (inyección).
@@ -69,6 +144,10 @@ func (cc *CheckoutController) Checkout(c *fiber.Ctx) error {
 	}
 	if !metodosPago[req.MetodoPago] {
 		problemas = append(problemas, "metodoPago no es válido")
+	} else {
+		detalle, errs := limpiarPagoDetalle(req.MetodoPago, req.PagoDetalle)
+		req.PagoDetalle = detalle
+		problemas = append(problemas, errs...)
 	}
 	if len(req.Items) == 0 {
 		problemas = append(problemas, "items no puede estar vacío")

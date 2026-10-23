@@ -1,6 +1,6 @@
 // src/services/adminProductosService.ts
 // Administración de productos (solo admin). El borrado es lógico: el producto queda "inactivo".
-import { apiFetch } from './http';
+import { API_URL, apiFetch } from './http';
 import type { Producto } from '../data/productos';
 import type { Pagina } from './pedidosService';
 
@@ -33,3 +33,11 @@ export const actualizarProducto = (id: number, cambios: Partial<ProductoForm> & 
 /** Desactiva el producto (no borra la fila). */
 export const desactivarProducto = (id: number) =>
   apiFetch<void>(`/api/productos/${id}`, { method: 'DELETE' });
+
+/** Sube una foto (se guarda en la base de datos) y devuelve su URL pública COMPLETA. */
+export const subirImagen = async (foto: Blob): Promise<string> => {
+  const formulario = new FormData();
+  formulario.append('imagen', foto, 'foto.jpg');
+  const respuesta = await apiFetch<{ id: number; url: string }>('/api/imagenes', { method: 'POST', body: formulario });
+  return `${API_URL}${respuesta.url}`;
+};

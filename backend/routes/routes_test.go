@@ -24,11 +24,13 @@ var rutasPublicas = map[string]bool{
 	"POST /api/register":     true,
 	"GET /api/productos":     true,
 	"GET /api/productos/:id": true,
+	"GET /api/imagenes/:id":  true,
 }
 
 // Cualquier usuario con sesión (RequireAuth). Cada una filtra por la identidad del TOKEN, no por el body/query.
 var rutasConSesion = map[string]bool{
 	"POST /api/checkout":          true,
+	"POST /api/comprobantes":      true, // el voucher queda a nombre del usuario del TOKEN
 	"GET /api/red/mia":            true,
 	"GET /api/comisiones/mias":    true,
 	"GET /api/liquidaciones/mias": true,
@@ -42,6 +44,8 @@ var rutasAdmin = map[string]bool{
 	"GET /api/pedidos":                        true,
 	"PATCH /api/pedidos/:id/estado":           true,
 	"POST /api/productos":                     true,
+	"POST /api/imagenes":                      true,
+	"GET /api/comprobantes/:id":               true, // los vouchers contienen datos bancarios: solo admin
 	"PUT /api/productos/:id":                  true,
 	"DELETE /api/productos/:id":               true,
 	"GET /api/admin/productos":                true,

@@ -17,6 +17,8 @@ type Dependencias struct {
 	Pedido   *controllers.PedidoController
 
 	Liquidacion *controllers.LiquidacionController
+	Imagen      *controllers.ImagenController
+	Comprobante *controllers.ComprobanteController
 	Reporte     *controllers.ReporteController
 	Usuario     *controllers.UsuarioController
 
@@ -36,6 +38,7 @@ func SetupRoutes(app *fiber.App, d Dependencias) {
 	api.Get("/health", d.Health.Health)
 	api.Post("/login", d.Auth.Login)
 	api.Post("/register", d.Auth.Register)
+	api.Get("/imagenes/:id", d.Imagen.Ver) // fotos de productos (públicas, como el catálogo)
 	api.Get("/productos", d.Producto.GetProductos)
 	api.Get("/productos/:id", d.Producto.GetProductoPorID)
 
@@ -43,6 +46,8 @@ func SetupRoutes(app *fiber.App, d Dependencias) {
 	// El árbol GLOBAL de la red es información del negocio: solo admin (cada usuario ve lo suyo en /red/mia).
 	api.Get("/red", autenticado, soloAdmin, d.Red.GetRed)
 	api.Post("/checkout", autenticado, d.Checkout.Checkout)
+	api.Post("/comprobantes", autenticado, d.Comprobante.Subir)             // voucher de transferencia (cualquier usuario con sesión)
+	api.Get("/comprobantes/:id", autenticado, soloAdmin, d.Comprobante.Ver) // verlo: solo admin
 
 	// ---- Red propia, ledger de comisiones y liquidaciones ----
 	api.Get("/red/mia", autenticado, d.Red.Mia)
@@ -59,6 +64,7 @@ func SetupRoutes(app *fiber.App, d Dependencias) {
 	api.Patch("/pedidos/:id/estado", autenticado, soloAdmin, d.Pedido.CambiarEstado)
 
 	// ---- Administración de productos (RequireAuth + RequireAdmin) ----
+	api.Post("/imagenes", autenticado, soloAdmin, d.Imagen.Subir)
 	api.Post("/productos", autenticado, soloAdmin, d.Producto.CrearProducto)
 	api.Put("/productos/:id", autenticado, soloAdmin, d.Producto.ActualizarProducto)
 	api.Delete("/productos/:id", autenticado, soloAdmin, d.Producto.EliminarProducto)

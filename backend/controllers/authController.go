@@ -124,7 +124,7 @@ func (a *AuthController) Register(c *fiber.Ctx) error {
 	case errors.Is(err, repository.ErrEmailDuplicado):
 		return c.Status(fiber.StatusConflict).JSON(models.NewAPIError(fiber.StatusConflict, "Ya existe una cuenta con ese email", nil))
 	case errors.Is(err, repository.ErrReferidoInvalido):
-		return c.Status(fiber.StatusBadRequest).JSON(models.NewAPIError(fiber.StatusBadRequest, "El código de referido no existe", fiber.Map{"ref": ref}))
+		return c.Status(fiber.StatusBadRequest).JSON(models.NewAPIError(fiber.StatusBadRequest, "El código de referido \""+ref+"\" no existe. Revísalo o déjalo vacío si no tienes uno", fiber.Map{"ref": ref}))
 	case err != nil:
 		log.Printf("register: error: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(models.NewAPIError(fiber.StatusInternalServerError, "Error interno del servidor", nil))

@@ -98,8 +98,11 @@ const Registro = () => {
               value={ref}
               onChange={(e) => setRef(e.target.value.toUpperCase())}
               className={`${campo} font-mono`}
-              placeholder="Ej.: ANA"
+              placeholder="Déjalo vacío si no tienes uno"
             />
+            <p className="text-xs text-slate-400 mt-1">
+              Solo escríbelo si alguien te invitó. Si lo dejas vacío, igual puedes crear tu cuenta.
+            </p>
           </div>
           <button
             type="submit"

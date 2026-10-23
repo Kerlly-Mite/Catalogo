@@ -54,13 +54,14 @@ const Confirmacion = () => {
               <p className="text-slate-500">Fecha</p>
               <p className="font-semibold text-slate-800">{pedido.fecha}</p>
             </div>
-            <div>
+            {/* En móvil el correo y la ciudad ocupan todo el ancho (uno debajo del otro) para que no se solapen */}
+            <div className="col-span-2 sm:col-span-1 min-w-0">
               <p className="text-slate-500">Correo</p>
-              <p className="font-semibold text-slate-800">{pedido.cliente.email}</p>
+              <p className="font-semibold text-slate-800 break-all">{pedido.cliente.email}</p>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1 min-w-0">
               <p className="text-slate-500">Ciudad</p>
-              <p className="font-semibold text-slate-800">{pedido.cliente.ciudad}</p>
+              <p className="font-semibold text-slate-800 break-words">{pedido.cliente.ciudad}</p>
             </div>
           </div>
 

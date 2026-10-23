@@ -37,58 +37,58 @@ const Carrito = () => {
             {cart.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-white p-4 rounded-lg border border-slate-200 shadow-sm gap-4"
+                className="flex items-start bg-white p-4 rounded-lg border border-slate-200 shadow-sm gap-4"
               >
-                <div className="flex items-center gap-4">
-                  <img
-                    src={item.img}
-                    alt={item.nombre}
-                    className="w-16 h-16 object-cover rounded-md"
-                  />
-                  <div>
-                    <Link to={`/producto/${item.id}`}>
-                      <h3 className="font-semibold text-slate-800 hover:text-indigo-600 transition">
-                        {item.nombre}
-                      </h3>
-                    </Link>
-                    <p className="text-sm text-slate-500">${item.precio.toFixed(2)} c/u</p>
+                <img
+                  src={item.img}
+                  alt={item.nombre}
+                  className="w-16 h-16 object-cover rounded-md shrink-0"
+                />
+
+                {/* Nombre, precio unitario y debajo: cantidad + total */}
+                <div className="flex-1 min-w-0">
+                  <Link to={`/producto/${item.id}`}>
+                    <h3 className="font-semibold text-slate-800 hover:text-indigo-600 transition break-words">
+                      {item.nombre}
+                    </h3>
+                  </Link>
+                  <p className="text-sm text-slate-500">${item.precio.toFixed(2)} c/u</p>
+
+                  <div className="flex items-center justify-between gap-3 mt-3">
+                    {/* Control de cantidad */}
+                    <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shrink-0">
+                      <button
+                        onClick={() => decrementQuantity(item.id)}
+                        className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
+                        aria-label="Disminuir cantidad"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-[2.5rem] px-3 py-2 text-center text-sm font-semibold text-slate-800 border-x border-slate-200">
+                        {item.cantidad}
+                      </span>
+                      <button
+                        onClick={() => incrementQuantity(item.id)}
+                        className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
+                        aria-label="Aumentar cantidad"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <p className="font-bold text-indigo-600 text-right">
+                      ${(item.precio * item.cantidad).toFixed(2)}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  {/* Control de cantidad */}
-                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => decrementQuantity(item.id)}
-                      className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
-                      aria-label="Disminuir cantidad"
-                    >
-                      −
-                    </button>
-                    <span className="px-3 py-2 text-sm font-semibold text-slate-800 border-x border-slate-200">
-                      {item.cantidad}
-                    </span>
-                    <button
-                      onClick={() => incrementQuantity(item.id)}
-                      className="px-3 py-2 text-slate-600 hover:bg-slate-100 transition"
-                      aria-label="Aumentar cantidad"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <p className="font-bold text-indigo-600 w-20 text-right">
-                    ${(item.precio * item.cantidad).toFixed(2)}
-                  </p>
-
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="text-red-500 hover:text-red-700 transition"
-                    title="Eliminar producto"
-                  >
-                    🗑️
-                  </button>
-                </div>
+                <button
+                  onClick={() => removeFromCart(item.id)}
+                  className="text-red-500 hover:text-red-700 transition shrink-0"
+                  title="Eliminar producto"
+                >
+                  🗑️
+                </button>
               </div>
             ))}
           </div>

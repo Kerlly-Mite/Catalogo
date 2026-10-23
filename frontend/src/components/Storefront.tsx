@@ -29,7 +29,7 @@ const Storefront = () => {
   return (
     <div>
       {/* ===== HERO: ocupa toda la pantalla (min-h-screen) ===== */}
-      <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-700 via-purple-700 to-slate-900 text-white overflow-hidden">
+      <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 via-sky-700 to-slate-900 text-white overflow-hidden">
         {/* Decoración de fondo (círculos difuminados) */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl" />
         <div className="absolute -bottom-32 -right-24 w-[28rem] h-[28rem] bg-purple-500/30 rounded-full blur-3xl" />

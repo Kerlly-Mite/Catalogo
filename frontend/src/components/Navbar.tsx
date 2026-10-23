@@ -1,4 +1,5 @@
 // src/components/Navbar.tsx
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +14,26 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
   const { totalItems } = useCart();
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+
+  // Menú del perfil: se abre al hacer clic/tocar el avatar y se cierra al tocar fuera o con Escape.
+  const [menuAbierto, setMenuAbierto] = useState<boolean>(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const cerrarSiTocaFuera = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuAbierto(false);
+    };
+    const cerrarConEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuAbierto(false);
+    };
+    document.addEventListener("pointerdown", cerrarSiTocaFuera);
+    document.addEventListener("keydown", cerrarConEscape);
+    return () => {
+      document.removeEventListener("pointerdown", cerrarSiTocaFuera);
+      document.removeEventListener("keydown", cerrarConEscape);
+    };
+  }, [menuAbierto]);
 
   const handleLogout = () => {
     logout();
@@ -63,23 +84,41 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
             {user?.rol}
           </span>
 
-          <div className="relative group cursor-pointer pb-2">
-            <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300 flex items-center justify-center">
+          <div ref={menuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuAbierto((abierto) => !abierto)}
+              aria-haspopup="menu"
+              aria-expanded={menuAbierto}
+              aria-label="Menú de usuario"
+              className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-300 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
               <img
                 src="https://fastly.picsum.photos/id/64/4326/2884.jpg?hmac=9_SzX666YRpR_fOyYStXpfSiJ_edO3ghlSRnH2w09Kg"
                 alt="Avatar del usuario"
                 className="w-full h-full object-cover"
               />
-            </div>
+            </button>
 
-            <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-md transition-colors"
+            {menuAbierto && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-2 w-60 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden"
               >
-                Cerrar Sesión
-              </button>
-            </div>
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{user?.email}</p>
+                  <p className="text-xs text-slate-500 uppercase">{user?.rol}</p>
+                </div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleLogout}
+                  className="w-full min-h-[44px] text-left px-4 py-2 text-sm text-red-600 font-semibold hover:bg-red-50 transition-colors"
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

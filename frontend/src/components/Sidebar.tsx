@@ -90,16 +90,19 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
   return (
     <aside
       className={`
-        fixed inset-y-0 left-0 z-50 transform bg-red-900 text-white flex flex-col transition-all duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 transform bg-gradient-to-b from-sky-600 to-blue-900 text-white flex flex-col transition-all duration-300 ease-in-out
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         w-64
         md:relative md:translate-x-0
         ${isCollapsed ? "md:w-20" : "md:w-64"}
       `}
     >
-      <div className={`p-4 md:p-6 text-xl font-bold border-b border-slate-700 flex items-center ${isCollapsed ? 'md:justify-center' : 'justify-start'} whitespace-nowrap`}>
-        <span className="md:hidden">MultiCatálogo</span>
-        <span className="hidden md:inline">{isCollapsed ? "MC" : "MultiCatálogo"}</span>
+      <div className={`p-4 md:p-6 border-b border-white/20 whitespace-nowrap ${isCollapsed ? 'md:text-center' : ''}`}>
+        <div className="text-xl font-bold">
+          <span className="md:hidden">MultiCatálogo</span>
+          <span className="hidden md:inline">{isCollapsed ? "MC" : "MultiCatálogo"}</span>
+        </div>
+        <p className={`text-sm text-sky-100 mt-0.5 ${isCollapsed ? 'md:hidden' : ''}`}>Kerlly Mite</p>
       </div>
 
       <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
@@ -117,8 +120,8 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
               onClick={closeMobileMenu}
               className={`flex items-center gap-3 p-3 rounded transition ${
                 esActivo
-                  ? "bg-indigo-600 text-white"
-                  : "hover:bg-slate-800"
+                  ? "bg-white/25 text-white font-semibold shadow-sm"
+                  : "text-sky-50 hover:bg-white/10"
               } ${isCollapsed ? 'md:justify-center' : ''}`}
               title={item.title}
             >
@@ -133,7 +136,7 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-700 text-xs text-slate-300">
+      <div className="p-3 border-t border-white/20 text-xs text-sky-100">
         {isCollapsed ? (
           <p className="text-center uppercase">{user?.rol}</p>
         ) : (
